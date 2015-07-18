@@ -1,0 +1,15 @@
+<h1>Listing Buyers</h1>
+ 
+<table class="pure-table">
+  <tr>
+    <th>Name</th>
+    <th>Public Key</th>
+  </tr>
+ 
+  <% @buyers.each do |buyer| %>
+    <tr>
+      <td><%= buyer.name %></td>
+      <td><%= buyer.public_key%></td>
+    </tr>
+  <% end %>
+</table>

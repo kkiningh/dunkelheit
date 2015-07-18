@@ -1,46 +1,51 @@
-# The output of all these installation steps is noisy. With this utility
-# the progress report is nice and concise.
-function install {
-    echo installing $1
-    shift
-    apt-get -y install "$@" >/dev/null 2>&1
-}
+#!/usr/bin/env bash
 
-echo 'updating package information'
-apt-add-repository -y ppa:brightbox/ruby-ng >/dev/null 2>&1
-apt-get -y update >/dev/null 2>&1
+# enable console colors
+sed -i '1iforce_color_prompt=yes' ~/.bashrc
 
-install 'development tools' build-essential
+# set apt and dpkg to expect noninteractive input
+# fixes "dpkg-preconfigure: unable to re-open stdin: No such file or directory"
+export DEBIAN_FRONTEND=noninteractive
 
-install 'Ruby' ruby2.2 ruby2.2-dev
-update-alternatives --set ruby /usr/bin/ruby2.2 >/dev/null 2>&1
-update-alternatives --set gem /usr/bin/gem2.2 >/dev/null 2>&1
+# update the list of package repositories
+sudo apt-get -y update
 
-echo 'installing Bundler'
-gem install bundler -N >/dev/null 2>&1
+# install ruby dependencies
+sudo apt-get -y install git-core curl zlib1g-dev build-essential libssl-dev \
+    libreadline-dev libyaml-dev libsqlite3-dev sqlite3 libxml2-dev \
+    libxslt1-dev libcurl4-openssl-dev python-software-properties libffi-dev
 
-install 'Git' git
-install 'memcached' memcached
+# setup rbenv and ruby-build
+git clone https://github.com/sstephenson/rbenv.git ~/.rbenv
+echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc
+echo 'eval "$(rbenv init -)"' >> ~/.bashrc
+git clone https://github.com/sstephenson/ruby-build.git ~/.rbenv/plugins/ruby-build
 
-debconf-set-selections <<< 'mysql-server mysql-server/root_password password root'
-debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password root'
-install MySQL mysql-server libmysqlclient-dev
-# mysql -uroot -proot <<SQL
-# CREATE USER 'rails'@'localhost';
-# CREATE DATABASE activerecord_unittest  DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci;
-# CREATE DATABASE activerecord_unittest2 DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci;
-# GRANT ALL PRIVILEGES ON activerecord_unittest.* to 'rails'@'localhost';
-# GRANT ALL PRIVILEGES ON activerecord_unittest2.* to 'rails'@'localhost';
-# GRANT ALL PRIVILEGES ON inexistent_activerecord_unittest.* to 'rails'@'localhost';
-# SQL
+# Install ruby 2.2.2 and bundler
+export RBENV_ROOT="${HOME}/.rbenv"
+export PATH="${RBENV_ROOT}/bin:${PATH}"
+export PATH="${RBENV_ROOT}/shims:${PATH}"
+rbenv install 2.2.2
+rbenv global 2.2.2
 
-# JS runtime
-install 'JS runtime (nodejs)' nodejs
+# disable docs during gem install
+echo 'gem: --no-rdoc --no-ri' >> ~/.gemrc
+gem install bundler
 
-# intall Rails 
-gem install rails -N >/dev/null 2>&1
+# install nodejs
+sudo add-apt-repository ppa:chris-lea/node.js
+sudo apt-get -y update
+sudo apt-get -y install nodejs
 
-# Needed for docs generation.
-update-locale LANG=en_US.UTF-8 LANGUAGE=en_US.UTF-8 LC_ALL=en_US.UTF-8
+# install rails 4.2.1
+gem install rails -v 4.2.1
 
-echo 'setup complete'
+# rehash
+rbenv rehash
+
+# set the root password for mysql to empty
+sudo debconf-set-selections <<< 'mysql-server mysql-server/root_password password '
+sudo debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password '
+
+# install mysql
+sudo apt-get -y install mysql-server mysql-client libmysqlclient-dev
